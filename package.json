@@ -1,10 +1,10 @@
 {
-	"name": "ltc_trigger",
-	"productName": "LTC Trigger",
-	"version": "0.1.1",
-	"description": "This program receives UDP data from LTC Reader and triggers HTTP GET/POST requests or other actions.",
+	"name": "dooropener",
+	"productName": "DoorOpener",
+	"version": "1.0.0",
+	"description": "This program fetches webcal links and based on the start/end times of the events, can open or close a relay, to lock/unlock doors or do other things. It is designed to work with the Web Relay Quad by ControlByWeb.",
 	"license": "MIT",
-	"repository": "josephdadams/ltc_trigger",
+	"repository": "josephdadams/DoorOpener",
 	"author": {
 		"name": "Joseph Adams",
 		"email": "josephdadams@gmail.com"
@@ -33,7 +33,8 @@
 		"electron-updater": "^4.3.8",
 		"electron-util": "^0.15.1",
 		"jquery": "^3.6.0",
-		"marked": "^4.0.17"
+		"marked": "^4.0.17",
+		"node-ical": "^0.15.3"
 	},
 	"devDependencies": {
 		"electron": "^12.0.6",
@@ -52,7 +53,7 @@
 		"releaseDraft": false
 	},
 	"build": {
-		"appId": "com.josephadams.LTC_Trigger",
+		"appId": "com.josephadams.DoorOpener",
 		"mac": {
 			"category": "public.app-category.utilities",
 			"darkModeSupport": true
@@ -80,10 +81,10 @@
 			"category": "Utility"
 		},
 		"extraResources": [
-			"help.md"
+			"./help.md"
 		],
 		"extraFiles": [
-			"help.md"
+			"./help.md"
 		]
 	}
 }

@@ -30,17 +30,17 @@ jobs:
 ##      uses: actions/upload-artifact@v2
 ##      if: matrix.os == 'ubuntu-latest'
 ##      with:
-##        name: 'LTCTrigger-${{ steps.package-version.outputs.version }}-Linux'
-##        path: 'release/LTCTrigger-${{ steps.package-version.outputs.version }}.AppImage'
+##        name: 'DoorOpener-${{ steps.package-version.outputs.version }}-Linux'
+##        path: 'release/DoorOpener-${{ steps.package-version.outputs.version }}.AppImage'
 ##    - name: Upload Artifact
 ##      uses: actions/upload-artifact@v2
 ##      if: matrix.os == 'macos-latest'
 ##      with:
-##        name: 'LTCTrigger-${{ steps.package-version.outputs.version }}-MacOS'
-##        path: 'release/LTCTrigger-${{ steps.package-version.outputs.version }}.dmg'
+##        name: 'DoorOpener-${{ steps.package-version.outputs.version }}-MacOS'
+##        path: 'release/DoorOpener-${{ steps.package-version.outputs.version }}.dmg'
 ##    - name: Upload Artifact
 ##      uses: actions/upload-artifact@v2
 ##      if: matrix.os == 'windows-latest'
 ##      with:
-##        name: 'LTCTrigger-${{ steps.package-version.outputs.version }}-Windows'
-##        path: 'release/LTCTrigger Setup ${{ steps.package-version.outputs.version }}.exe'
+##        name: 'DoorOpener-${{ steps.package-version.outputs.version }}-Windows'
+##        path: 'release/DoorOpener Setup ${{ steps.package-version.outputs.version }}.exe'

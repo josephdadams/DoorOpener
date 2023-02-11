@@ -9,18 +9,34 @@ const contextMenu = require('electron-context-menu');
 const config = require('./config.js');
 const menu = require('./menu.js');
 
-const udp = require('dgram');
-const { triggerAsyncId } = require('async_hooks');
-var socket = null;
-
+//General Variables
+const ical = require('node-ical');
 const axios = require('axios');
+
+//how often to check for new webcal events
+var CALENDAR_POLLING_RATE = 60 * 1000; //60 seconds
+
+//how often to check existing events to trigger a relay
+var CHECK_EVENT_RATE = 5 * 1000; //5 seconds
+
+//how often to do cleanup/maintenance of expired events
+var CLEANUP_RATE = 24 * 60 * 60 * 1000; // every 24 hours
+
+//amount of time before an event that a relay can be triggered
+var PRECURSOR_TIME = 15 * 60 * 1000; //15 minutes, in milliseconds
+
+var INTERVAL_DOOR_POLLING = null;
+var INTERVAL_CHECK_EVENTS = null;
+var INTERVAL_CLEAN_EVENTS = null;
+
+var Doors = [];
 
 unhandled();
 //debug();
 contextMenu();
 
 // Note: Must match `build.appId` in package.json
-app.setAppUserModelId('com.josephadams.LTC_Trigger');
+app.setAppUserModelId('com.josephadams.DoorOpener');
 
 // Uncomment this before publishing your first version.
 // It's commented out as it throws an error if there are no published versions.
@@ -40,8 +56,8 @@ const createMainWindow = async () => {
 	const win = new BrowserWindow({
 		title: app.name,
 		show: false,
-		width: 650,
-		height: 500,
+		width: 850,
+		height: 900,
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,
@@ -92,130 +108,308 @@ app.on('activate', async () => {
 });
 
 //IPCs
-ipcMain.on('udp_port_change', function (event) {
-	startListening();
+ipcMain.on('reload', function (event) {
+	startUp();
 });
 
 //Functions
-function startListening() {
+function startUp() {
+	clearInterval(INTERVAL_DOOR_POLLING);
+	clearInterval(INTERVAL_CHECK_EVENTS);
+	clearInterval(INTERVAL_CLEAN_EVENTS);
+
+	loadConfig();
+	startPolling();
+
+	INTERVAL_CHECK_EVENTS = setInterval(checkEvents, CHECK_EVENT_RATE);
+	INTERVAL_CLEAN_EVENTS = setInterval(cleanEvents, CLEANUP_RATE);
+}
+
+function loadConfig() {
 	try {
-		//try to close the socket if it's open
-		if (socket !== null) {
-			socket.close();
-			socket = null;
+		CALENDAR_POLLING_RATE = config.get('calendarPollingRate') * 1000
+		
+		CHECK_EVENT_RATE = config.get('checkEventRate') * 1000;
+		CLEANUP_RATE = config.get('cleanupRate') * 60 * 60 * 1000;
+		PRECURSOR_TIME = config.get('precursorTime') * 60 * 1000;
+
+		Doors = config.get('doors');;
+		logger('Door information loaded.', 'info');
+	}
+	catch(error) {
+		logger('Error loading information.');
+		logger(error.toString())
+	}
+}
+
+function startPolling() {
+	try {
+		if (Doors.length > 0) {
+			logger('Starting WebCal polling:');
+	
+			for (let i = 0; i < Doors.length; i++) {
+				logger('Checking Door: ' + Doors[i].name, 'info');
+				if (Doors[i].enabled) {
+					if (Doors[i].webcal) {
+						checkCalendar(Doors[i]);
+					}
+					else {
+						logger('This door does not have a webcal configured: ' + Doors[i].name, 'error');
+					}
+				}
+				else {
+					logger(`Door ${Doors[i].name} is not enabled. No events will be added.`, 'info');
+				}
+			}
+	
+			INTERVAL_DOOR_POLLING = setTimeout(startPolling, CALENDAR_POLLING_RATE);
+		}
+		else {
+			//no doors, so quit the program
+			logger('No doors configured. Exiting program.', 'error');
+			process.exit(0);
 		}
 	}
 	catch(error) {
-		//unable to close socket for some reason
+		logger(`Error occured while polling for WebCal data: ${error}`, 'error');
 	}
-
-	let port = config.get('udpPort');
-
-	try {
-		//try to open the socket
-		socket = udp.createSocket('udp4');
-		socket.on('error', function(error) {
-			console.log('Error: ' + error);
-			socket.close();
-		});
-		
-		socket.on('message', function(msg, info) {
-			//console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
-	
-			checkTriggers(msg.toString());
-		});
-		
-		socket.on('listening', function() {
-			let address = socket.address();
-	
-			console.log('Socket listening at: ' + address.address + ':' + address.port);
-		});
-		
-		socket.on('close', function() {
-			console.log('Socket is closed!');
-		});
-		
-		socket.bind(port);
-	}
-	catch (error) {
-		//unable to open the socket for some reason
-	}	
 }
 
-function checkTriggers(message) {
-	//loop through all triggers and see if there is a match
+function checkCalendar(door) {
+	try {
+		logger(`Checking Calendar for Door: ${door.name}`, 'info');
 
-	let triggers = config.get('triggers');
-
-	if (message.indexOf('(') == 0) { //this is a message from LTC Reader
-		try {
-			let timecode = message.substring(2, 13);
-
-			if (mainWindow) {
-				mainWindow.webContents.send('timecode', timecode);
+		let counter = 0;
+	
+		let dtNow = new Date();
+	
+		ical.fromURL(door.webcal, {}, function (err, data) {
+			for (let k in data) {
+				if (data.hasOwnProperty(k)) {
+					const ev = data[k];
+					if (data[k].type == 'VEVENT') {
+						if (ev.start >= dtNow) {
+							let added = addEvent(door.id, ev.uid, ev.summary, ev.start, ev.end);
+							if (added) {
+								//only increment the counter if the event was actually added
+								counter++;
+							}
+						}
+					}
+				}
 			}
-		
-			for (let i = 0; i < triggers.length; i++) {
-				if  (triggers[i].timecode == timecode) {
-					runAction(triggers[i]);
+	
+			logger(`${counter} New Events added.`, 'info');
+		});
+	}
+	catch(error) {
+		logger(`Error occured while retrieving WebCal data: ${error}`, 'error');
+	}
+}
+
+function addEvent(doorId, uid, summary, start, end) {
+	let returnVal = false;
+
+	try {
+		for (let i = 0; i < Doors.length; i++) {
+			if (Doors[i].id === doorId) {
+				if (Doors[i].events && Doors[i].events.constructor !== Array) {
+					Doors[i].events = [];
+				}
+				let eventObj = {};
+				eventObj.uid = uid;
+				eventObj.summary = summary;
+				eventObj.start = start;
+				eventObj.end = end;
+				//check that the event is not already in the list before adding it
+				let found = false;
+				for (let j = 0; j < Doors[i].events.length; j++) {
+					if (Doors[i].events[j].uid === uid) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					logger(`Adding: [${Doors[i].name}]: ${summary}`, 'info');
+					Doors[i].events.push(eventObj);
+					returnVal = true;
 				}
 			}
 		}
-		catch(error) {
-			//unable to parse timecode, most likely
-			let message = 'Unable to parse timecode.';
-			if (mainWindow) {
-				mainWindow.webContents.send('timecode', message);
-			}
-		}
 	}
-	else {
-		let message = 'Unable to parse timecode. Is another program using this UDP Port?';
-		if (mainWindow) {
-			mainWindow.webContents.send('timecode', message);
-		}
+	catch(error) {
+		logger(`Error occured while adding event: ${error}`, 'error');
+	}
+	finally {
+		return returnVal;
 	}
 }
 
-function runAction(triggerObj) {
-	//runs the action if there was a match
-
-	//only URL is implemented currently, but this methodology supports other actions in the future
-	if (triggerObj.url) {
-		runUrl(triggerObj);
-		if (mainWindow) {
-			mainWindow.webContents.send('last_action', triggerObj);
-		}
-	}
-}
-
-function runUrl(triggerObj) {
+function checkEvents() {
 	try {
-		//perform the URL request
-		let options = {
-			method: triggerObj.method ? triggerObj.method : 'GET',
-			url: triggerObj.url
-		};
+		logger(`Checking Door Schedules. Every ${CHECK_EVENT_RATE}ms.`, 'info');
+		console.log('check event rate: ' + config.get('checkEventRate') + ' seconds');
 
-		//use POST with data if present
-		if (triggerObj.method && triggerObj.method == 'POST') {
-			options.method = 'POST';
-			if (triggerObj.data) {
-				options.data = triggerObj.data;
+		let dtNow = new Date().getTime();
+	
+		for (let i = 0; i < Doors.length; i++) {
+			let door_stayopened = false;
+	
+			//check if the door should be open right now
+			for (let j = 0; j < Doors[i].events.length; j++) {
+				let event = Doors[i].events[j];
+				if (dtNow >= (event.start.getTime() - PRECURSOR_TIME)) {
+					// if the current time is past a start time, then check the end time
+					if (dtNow < event.end.getTime()) {
+						//if the current time is not past the end time, open the door
+						door_stayopened = true;
+						logger(`Event says door should be opened: ${Doors[i].name}`, 'info');
+						openDoor(Doors[i]);
+					}
+				}
+			}
+	
+			//now check if the door can be closed
+			for (let j = 0; j < Doors[i].events.length; j++) {
+				let event = Doors[i].events[j];
+	
+				if (dtNow >= event.end.getTime()) {
+					if (!door_stayopened) {
+						closeDoor(Doors[i]);
+					}
+				}
 			}
 		}
+	}
+	catch(error) {
+		logger(`Error occured while checking Door Schedules: ${error}`, 'error');
+	}
+}
 
-		axios(options)
-		.then(function (response) {
-			console.log('URL triggered.');
+function cleanEvents() {
+	try {
+		logger(`Cleaning Out the Database and Removing Old Events.`, 'info');
+		let dtNow = new Date().getTime();
+	
+		let delEvents = [];
+	
+		for (let i = 0; i < Doors.length; i++) {
+			//check if an event is old and should be removed
+			for (let j = 0; j < Doors[i].events.length; j++) {
+				let event = Doors[i].events[j];
+	
+				if (dtNow >= event.end.getTime()) {
+					let delObj = {
+						doorId: Doors[i].id,
+						uid: event.uid
+					};
+					delEvents.push(delObj);
+				}
+			}
+		}
+	
+		logger(`Found ${delEvents.length} that have expired. Removing them now.`, 'info');
+		deleteEvents(delEvents);
+		logger(`Cleaning Complete. ${delEvents.length} expired events removed.`, 'info');
+	}
+	catch(error) {
+		logger(`Error occured while cleaning expired events: ${error}`, 'error');
+	}
+}
+
+function deleteEvents(delEvents) {
+	try {
+		for (let k = 0; k < delEvents.length; k++) {
+			for (let i = 0; i < Doors.length; i++) {
+				if (Doors[i].id === delEvents[k].doorId) {
+					for (let j = 0; j < Doors[i].events.length; j++) {
+						if (Doors[i].events[j].uid === delEvents[k].uid) {
+							Doors[i].events.splice(j, 1);
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	catch(error) {
+		logger(`Error occured while deleting events: ${error}`, 'error');
+	}
+}
+
+function openDoor(door) {
+	logger(`Opening Door: ${door.name}`, 'info');
+	updateRelay(door, 1);
+}
+
+function closeDoor(door) {
+	logger(`Closing Door: ${door.name}`, 'info');
+	updateRelay(door, 0);
+}
+
+function updateRelay(door, action) {
+	try {
+		let statusUrl = `http://${door.relay_address}/customState.json`;
+
+		axios.get(statusUrl)
+		.then(res => {
+			if (res.data) {
+				//check status before attempting change, if it's already the current value, no need to change anything
+				if (res.data[door.relay_name]) {
+					if (res.data[door.relay_name].toString() !== action.toString()) {
+						//the door is currently the opposite of the proposed action, so let's change it
+						let commandUrl = `http://${door.relay_address}/customState.json?${door.relay_name}=${action}`;
+
+						axios.get(commandUrl)
+						.then(res => {
+							//do something with the response (or don't)
+							if (mainWindow) {
+								let dtNow = new Date();
+								mainWindow.webContents.send('door_action', door, action, dtNow);
+							}
+						})
+						.catch(err => {
+							logger(`Error: ${err.message}`, 'error');
+						});
+					}
+					else {
+						logger('Door is already in this state, so no action.', 'info');
+					}
+				}
+			}
 		})
-		.catch(function (error) {
-			console.log('Unable to run trigger.', error.errno);
+		.catch(err => {
+			logger(`Error: ${err.message}`, 'error');
 		});
 	}
 	catch(error) {
-		//some error sending the URL request
-	}	
+		logger(`Error occured while updating relay: ${error}`, 'error');
+	}
+}
+
+function logger(logtext, type) {
+	//logs the item to the console
+
+	try {
+		let dtNow = new Date();
+
+		console.log(logtext);
+		sendToUI(logtext, type, dtNow);
+	}
+	catch(error) {
+		logger(`Error occured while logging information to the console: ${error}`, 'error');
+	}
+}
+
+function sendToUI(logtext, type, dtNow) {
+	try {
+		if (mainWindow) {
+			mainWindow.webContents.send('log', logtext, type, dtNow);
+		}
+	}
+	catch(error) {
+		console.log(`Error occured while sending information to the UI: ${error}`); //don't use logger function to avoid infinite loop
+	}
 }
 
 (async () => {
@@ -223,5 +417,5 @@ function runUrl(triggerObj) {
 	Menu.setApplicationMenu(menu);
 	mainWindow = await createMainWindow();
 
-	startListening();
+	startUp();
 })();

@@ -1,6 +1,7 @@
-# LTC Trigger
+# Door Opener
 
-> This program receives UDP data from LTC Reader and triggers HTTP GET requests or performs other actions.
+> This program fetches webcal links and based on the start/end times of the events, can open or close a relay, to lock/unlock doors or do other things. It is designed to work with the Web Relay Quad by ControlByWeb.
+> https://www.controlbyweb.com/webrelay-quad/
 
 ## Install
 
@@ -8,17 +9,17 @@
 
 **macOS**
 
-[**Download**](https://github.com/josephdadams/ltc-trigger/releases/latest) the `.dmg` file.
+[**Download**](https://github.com/josephdadams/DoorOpener/releases/latest) the `.dmg` file.
 
 **Linux**
 
-[**Download**](https://github.com/josephdadams/ltc-trigger/releases/latest) the `.AppImage` or `.deb` file.
+[**Download**](https://github.com/josephdadams/DoorOpener/releases/latest) the `.AppImage` or `.deb` file.
 
 *The AppImage needs to be [made executable](http://discourse.appimage.org/t/how-to-make-an-appimage-executable/80) after download.*
 
 **Windows**
 
-[**Download**](https://github.com/josephdadams/ltc-trigger/releases/latest) the `.exe` file.
+[**Download**](https://github.com/josephdadams/DoorOpener/releases/latest) the `.exe` file.
 
 ---
 
@@ -38,5 +39,3 @@ $ npm start
 ```
 $ npm run release
 ```
-
-After Travis finishes building your app, open the release draft it created and click "Publish".

@@ -80,9 +80,6 @@
 			],
 			"category": "Utility"
 		},
-		"files": [
-			"help.md"
-		],
 		"extraResources": [
 			"./help.md"
 		],

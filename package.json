@@ -53,7 +53,7 @@
 		"releaseDraft": false
 	},
 	"build": {
-		"appId": "com.josephadams.DoorOpener",
+		"appId": "com.josephadams.dooropener",
 		"mac": {
 			"category": "public.app-category.utilities",
 			"darkModeSupport": true
@@ -80,6 +80,9 @@
 			],
 			"category": "Utility"
 		},
+		"files": [
+			"help.md"
+		],
 		"extraResources": [
 			"./help.md"
 		],

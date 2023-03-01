@@ -1,7 +1,7 @@
 {
 	"name": "dooropener",
 	"productName": "DoorOpener",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "This program fetches webcal links and based on the start/end times of the events, can open or close a relay, to lock/unlock doors or do other things. It is designed to work with the Web Relay Quad by ControlByWeb.",
 	"license": "MIT",
 	"repository": "josephdadams/DoorOpener",
@@ -80,11 +80,6 @@
 			],
 			"category": "Utility"
 		},
-		"extraResources": [
-			"./help.md"
-		],
-		"extraFiles": [
-			"./help.md"
-		]
+		"extraResources": ["./extraResources/**"]
 	}
 }

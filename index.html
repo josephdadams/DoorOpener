@@ -22,7 +22,7 @@
 			const package_json = require('./package.json');
 
 			const { marked } = require('marked');
-			const helpFile = path.join(__dirname, 'help.md');
+			const helpFile = path.join(process.resourcePath, 'extraResources', 'help.md');
 
 			var {basicSetup, EditorView} = require("codemirror");
 			var {oneDark} = require('@codemirror/theme-one-dark');
@@ -86,10 +86,10 @@
 
 			ipc.on('door_action', function (event, doorObj, action, dtNow) {
 				//update the UI to show the last action that was run
-				$('#txtDateDoorAction').val(dtNow);
+				//$('#txtDateDoorAction').val(dtNow);
 
-				let actionText = `${doorObj.name} (${(action == 1 ? 'Unlocked' : 'Locked')})`;
-				$('#txtDoorAction').val(actionText);
+				//let actionText = `${doorObj.name} (${(action == 1 ? 'Unlocked' : 'Locked')})`;
+				//$('#txtDoorAction').val(actionText);
 			});
 
 			ipc.on('log', function (event, log, type, dtNow) {
@@ -173,9 +173,11 @@
 				try {
 					let doors = JSON.parse(editor.state.doc.toString());
 					config.set('doors', doors);
+					ipc.send('reload');
 				}
 				catch(error) {
 					//JSON did not parse successfully
+					console.log(error)
 				}
 				
 			}
@@ -220,7 +222,7 @@
 					</div>						
 				</div>
 				
-				<div class="input-group">
+				<!--<div class="input-group">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for="txtDateDoorAction">Most Recent Trigger</label>
 					</div>	
@@ -229,9 +231,8 @@
 						<label class="input-group-text" for="txtDoorAction">Door</label>
 					</div>	
 					<input type='text' readonly id='txtLastAction' class='form-control'/>
-				</div>
-				<div id="divDoors">
-				</div>
+				</div>-->
+				<div id="divDoors"></div>
 				<div class='form-group col-md-12 d-flex align-items-center justify-content-end'>
 					<button type="button" class="btn btn-info" id="btnSave" onclick='save();'>Save Settings</button>
 				</div>

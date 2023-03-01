@@ -17,7 +17,6 @@
 			const config = require('./config');
 
 			const path = require('path');
-			const { readFile } = require('fs');
 
 			const package_json = require('./package.json');
 
@@ -70,18 +69,7 @@
 					parent: document.getElementById('divDoors')
 				});
 
-				try {
-					readFile(helpFile, 'utf8' , (err, data) => {
-						if (err) {
-							console.error(err);
-							return;
-						}
-						$('#divHelpBody').html(marked(data));
-					});
-				}
-				catch(error) {
-					//unable to load help file
-				}
+				ipc.send('helpfile');
 			});
 
 			ipc.on('door_action', function (event, doorObj, action, dtNow) {
@@ -90,6 +78,11 @@
 
 				//let actionText = `${doorObj.name} (${(action == 1 ? 'Unlocked' : 'Locked')})`;
 				//$('#txtDoorAction').val(actionText);
+			});
+
+			ipc.on('helpfile', function(event, helpFile) {
+				//update the UI to show the help file
+				$('#divHelpBody').html(marked(helpFile));
 			});
 
 			ipc.on('log', function (event, log, type, dtNow) {
@@ -179,7 +172,10 @@
 					//JSON did not parse successfully
 					console.log(error)
 				}
-				
+			}
+
+			function loadHelpFile() {
+				ipc.send('helpfile');
 			}
 		</script>
 	</head>
@@ -191,11 +187,11 @@
 				<p id='divTopLine'></p>		
 			</header>
 			<section class="main">
-				<div id="divHelpButton" class='form-group col-md-1 d-flex align-items-center justify-content-start'>
+				<!--<div id="divHelpButton" class='form-group col-md-1 d-flex align-items-center justify-content-start'>
 					<button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#helpModal">
 						Help
 					</button>
-				</div>
+				</div>-->
 				<div class='form-row'>
 					<div class="input-group">
 						<div class="input-group-prepend">

@@ -9,6 +9,9 @@ const contextMenu = require('electron-context-menu');
 const config = require('./config.js');
 const menu = require('./menu.js');
 
+const { readFile } = require('fs');
+const helpFile = './help.md';
+
 //General Variables
 const ical = require('node-ical');
 const axios = require('axios');
@@ -30,6 +33,8 @@ var INTERVAL_CHECK_EVENTS = null;
 var INTERVAL_CLEAN_EVENTS = null;
 
 var Doors = [];
+
+var HELPFILE = '';
 
 unhandled();
 //debug();
@@ -110,6 +115,10 @@ app.on('activate', async () => {
 //IPCs
 ipcMain.on('reload', function (event) {
 	startUp();
+});
+
+ipcMain.on('helpfile', function (event) {
+	sendHelpFile();
 });
 
 //Functions
@@ -412,10 +421,41 @@ function sendToUI(logtext, type, dtNow) {
 	}
 }
 
+function loadHelpFile() {
+	try {
+		readFile(helpFile, 'utf8' , (err, data) => {
+			if (err) {
+				logger(`Error occured while reading help file: ${err}`, 'error');
+				return;
+			}
+
+			HELPFILE = data.toString();
+
+			sendHelpFile();
+		});
+	}
+	catch(error) {
+		logger(`Error occured while reading help file: ${error}`, 'error');
+		logger(error, 'error');
+	}
+}
+
+function sendHelpFile() {
+	try {
+		if (mainWindow) {
+			mainWindow.webContents.send('helpfile', HELPFILE);
+		}
+	}
+	catch(error) {
+		logger(`Error occured while sending help file to the UI: ${error}`, 'error');
+	}
+}
+
 (async () => {
 	await app.whenReady();
 	Menu.setApplicationMenu(menu);
 	mainWindow = await createMainWindow();
 
 	startUp();
+	loadHelpFile();
 })();

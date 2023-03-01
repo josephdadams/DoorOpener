@@ -79,11 +79,6 @@
 				"deb"
 			],
 			"category": "Utility"
-		},
-		"files": [
-			"./build/**/*",
-      		"./index.js",
-			"./help.md"
-		  ]
+		}
 	}
 }

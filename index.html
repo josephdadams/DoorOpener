@@ -11,7 +11,7 @@
 		<script>
 			
 			const ipc = require('electron').ipcRenderer;
-			//const remote = require('electron').remote;
+			const remote = require('electron').remote;
 			const { shell } = require('electron');
 			
 			const config = require('./config');
@@ -22,7 +22,8 @@
 			const package_json = require('./package.json');
 
 			const { marked } = require('marked');
-			const helpFile = path.join(process.resourcePath, 'extraResources', 'help.md');
+			//const helpFile = path.join(remote.getAppPath(), "/help.md");
+			const helpFile = path.join(__dirname, "/help.md");
 
 			var {basicSetup, EditorView} = require("codemirror");
 			var {oneDark} = require('@codemirror/theme-one-dark');
@@ -232,7 +233,8 @@
 					</div>	
 					<input type='text' readonly id='txtLastAction' class='form-control'/>
 				</div>-->
-				<div id="divDoors"></div>
+				<div id="divDoors">
+				</div>
 				<div class='form-group col-md-12 d-flex align-items-center justify-content-end'>
 					<button type="button" class="btn btn-info" id="btnSave" onclick='save();'>Save Settings</button>
 				</div>
@@ -250,7 +252,8 @@
 							<span aria-hidden="true">&times;</span>
 							</button>
 						</div>
-						<div class="modal-body" id='divHelpBody'></div>
+						<div class="modal-body" id='divHelpBody'>
+						</div>
 						<div class="modal-footer">
 							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 						</div>

@@ -81,7 +81,9 @@
 			"category": "Utility"
 		},
 		"files": [
-			"help.md"
+			"./build/**/*",
+      		"./index.js",
+			"./help.md"
 		  ]
 	}
 }

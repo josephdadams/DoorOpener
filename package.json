@@ -80,7 +80,7 @@
 			],
 			"category": "Utility"
 		},
-		"extraFiles": [
+		"files": [
 			"help.md"
 		  ]
 	}

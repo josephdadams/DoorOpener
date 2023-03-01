@@ -22,7 +22,6 @@
 			const package_json = require('./package.json');
 
 			const { marked } = require('marked');
-			//const helpFile = path.join(remote.getAppPath(), "/help.md");
 			const helpFile = path.join(__dirname, "/help.md");
 
 			var {basicSetup, EditorView} = require("codemirror");
@@ -239,7 +238,7 @@
 					<button type="button" class="btn btn-info" id="btnSave" onclick='save();'>Save Settings</button>
 				</div>
 				<div id="divLog">
-					<textarea readonly id='txtLog' class='form-control'></textarea>
+					<textarea readonly id='txtLog' style="height:300px;" class='form-control'></textarea>
 				</div>
 			</section>
 		</div>

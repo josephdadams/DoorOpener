@@ -89,6 +89,7 @@
 				//update the UI to show the last log entry
 				var logField = $('#txtLog');
 				logField.val(logField.val() + `\n${dtNow} - ${log}`);
+				logField.scrollTop(logField[0].scrollHeight);
 			});
 
 			function insertDoor() {
